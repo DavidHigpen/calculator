@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
   <meta name="theme-color" content="#000000" id="themeColorMeta" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Calc" />
   <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
@@ -17,124 +18,104 @@
 <body>
   <div class="app" id="app">
 
-    <!-- Top bar -->
     <header class="topbar">
-      <button class="icon-btn" id="historyBtn" aria-label="History">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <polyline points="12,7 12,12 15,14"/>
+      <button class="icon-btn ghost" id="historyBtn" aria-label="History">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 3-6.7"/>
+          <polyline points="3 4 3 10 9 10"/>
+          <polyline points="12 7 12 12 15 14"/>
         </svg>
       </button>
-      <div class="topbar-right">
-        <button class="icon-btn" id="settingsBtn" aria-label="Settings">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </button>
-        <button class="icon-btn" id="modeBtn" aria-label="Toggle converter">
-          <svg id="modeIconCalc" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="3" width="16" height="18" rx="2"/>
-            <line x1="8" y1="7" x2="16" y2="7"/>
-            <circle cx="8" cy="12" r="0.6" fill="currentColor"/>
-            <circle cx="12" cy="12" r="0.6" fill="currentColor"/>
-            <circle cx="16" cy="12" r="0.6" fill="currentColor"/>
-            <circle cx="8" cy="16" r="0.6" fill="currentColor"/>
-            <circle cx="12" cy="16" r="0.6" fill="currentColor"/>
-            <circle cx="16" cy="16" r="0.6" fill="currentColor"/>
-          </svg>
-        </button>
+      <button class="icon-btn ghost" id="menuBtn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+          <circle cx="12" cy="5" r="2"/>
+          <circle cx="12" cy="12" r="2"/>
+          <circle cx="12" cy="19" r="2"/>
+        </svg>
+      </button>
+
+      <div class="menu-popup" id="menuPopup" aria-hidden="true">
+        <button class="menu-item" data-menu="converter">Converter</button>
+        <button class="menu-item" data-menu="settings">Settings</button>
       </div>
     </header>
 
-    <!-- Calculator view -->
     <main class="view calc-view active" id="calcView">
       <div class="display-wrap">
-        <div class="angle-label" id="angleLabel">Rad</div>
         <div class="expression-row">
-          <div class="expression" id="expression" role="textbox" aria-label="Expression"></div>
+          <div class="expression" id="expression"></div>
         </div>
         <div class="preview" id="preview"></div>
       </div>
 
-      <div class="keypad">
-        <!-- Scientific grid: 6 cols × 5 rows -->
-        <div class="sci-grid">
-          <button class="btn sci" data-insert="(">(</button>
-          <button class="btn sci" data-insert=")">)</button>
-          <button class="btn sci" data-action="mc">mc</button>
-          <button class="btn sci" data-action="mplus">m+</button>
-          <button class="btn sci" data-action="mminus">m−</button>
-          <button class="btn sci" data-action="mr">mr</button>
+      <div class="chevron-wrap">
+        <button class="chevron-btn" id="chevronBtn" aria-label="Toggle scientific">
+          <svg class="chev-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="7 10 12 5 17 10"/>
+            <polyline points="7 14 12 19 17 14"/>
+          </svg>
+        </button>
+      </div>
 
-          <button class="btn sci" data-action="inv" id="invBtn">2<sup>nd</sup></button>
-          <button class="btn sci" data-insert="²">x<sup>2</sup></button>
-          <button class="btn sci" data-insert="³">x<sup>3</sup></button>
-          <button class="btn sci" data-insert="^">x<sup>y</sup></button>
-          <button class="btn sci" data-insert="e^"><i>e</i><sup>x</sup></button>
-          <button class="btn sci" data-insert="10^">10<sup>x</sup></button>
+      <div class="sci-grid" id="sciGrid">
+        <button class="btn sci" data-insert="√(">√</button>
+        <button class="btn sci" data-insert="π">π</button>
+        <button class="btn sci" data-insert="^">^</button>
+        <button class="btn sci" data-insert="!">!</button>
 
-          <button class="btn sci" data-insert="⁻¹">¹⁄<sub>x</sub></button>
-          <button class="btn sci" data-insert="√("><sup>2</sup>√x</button>
-          <button class="btn sci" data-insert="∛("><sup>3</sup>√x</button>
-          <button class="btn sci" data-insert="ʸ√"><sup>y</sup>√x</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"ln","insert":"ln("}' data-secondary='{"label":"e^x","insert":"e^"}'>ln</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"log₁₀","insert":"log("}' data-secondary='{"label":"10^x","insert":"10^"}'>log<sub>10</sub></button>
+        <button class="btn sci" data-action="angle" id="angleBtn">Deg</button>
+        <button class="btn sci inv-swap" data-primary='{"label":"sin","insert":"sin("}' data-secondary='{"label":"sin⁻¹","insert":"asin("}'>sin</button>
+        <button class="btn sci inv-swap" data-primary='{"label":"cos","insert":"cos("}' data-secondary='{"label":"cos⁻¹","insert":"acos("}'>cos</button>
+        <button class="btn sci inv-swap" data-primary='{"label":"tan","insert":"tan("}' data-secondary='{"label":"tan⁻¹","insert":"atan("}'>tan</button>
 
-          <button class="btn sci" data-insert="!">x!</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"sin","insert":"sin("}' data-secondary='{"label":"sin⁻¹","insert":"asin("}'>sin</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"cos","insert":"cos("}' data-secondary='{"label":"cos⁻¹","insert":"acos("}'>cos</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"tan","insert":"tan("}' data-secondary='{"label":"tan⁻¹","insert":"atan("}'>tan</button>
-          <button class="btn sci" data-insert="e"><i>e</i></button>
-          <button class="btn sci" data-insert="E">EE</button>
+        <button class="btn sci" data-action="inv" id="invBtn">Inv</button>
+        <button class="btn sci" data-insert="e">e</button>
+        <button class="btn sci inv-swap" data-primary='{"label":"ln","insert":"ln("}' data-secondary='{"label":"eˣ","insert":"e^"}'>ln</button>
+        <button class="btn sci inv-swap" data-primary='{"label":"log","insert":"log("}' data-secondary='{"label":"10ˣ","insert":"10^"}'>log</button>
+      </div>
 
-          <button class="btn sci" data-action="rand">Rand</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"sinh","insert":"sinh("}' data-secondary='{"label":"sinh⁻¹","insert":"asinh("}'>sinh</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"cosh","insert":"cosh("}' data-secondary='{"label":"cosh⁻¹","insert":"acosh("}'>cosh</button>
-          <button class="btn sci inv-swap" data-primary='{"label":"tanh","insert":"tanh("}' data-secondary='{"label":"tanh⁻¹","insert":"atanh("}'>tanh</button>
-          <button class="btn sci" data-insert="π">π</button>
-          <button class="btn sci" data-action="angle" id="angleBtn">Deg</button>
-        </div>
+      <div class="basic-grid">
+        <button class="btn util filled" data-action="clear">AC</button>
+        <button class="btn util" data-action="paren">( )</button>
+        <button class="btn util" data-insert="%">%</button>
+        <button class="btn util" data-insert="÷">÷</button>
 
-        <!-- Basic grid: 4 cols × 5 rows -->
-        <div class="basic-grid">
-          <button class="btn util" data-action="back" aria-label="Backspace">
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 5H9l-7 7 7 7h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/>
-              <line x1="18" y1="9" x2="12" y2="15"/>
-              <line x1="12" y1="9" x2="18" y2="15"/>
-            </svg>
-          </button>
-          <button class="btn util" data-action="clear">C</button>
-          <button class="btn util" data-insert="%">%</button>
-          <button class="btn op" data-insert="÷">÷</button>
+        <button class="btn num" data-insert="7">7</button>
+        <button class="btn num" data-insert="8">8</button>
+        <button class="btn num" data-insert="9">9</button>
+        <button class="btn util" data-insert="×">×</button>
 
-          <button class="btn num" data-insert="7">7</button>
-          <button class="btn num" data-insert="8">8</button>
-          <button class="btn num" data-insert="9">9</button>
-          <button class="btn op" data-insert="×">×</button>
+        <button class="btn num" data-insert="4">4</button>
+        <button class="btn num" data-insert="5">5</button>
+        <button class="btn num" data-insert="6">6</button>
+        <button class="btn util" data-insert="−">−</button>
 
-          <button class="btn num" data-insert="4">4</button>
-          <button class="btn num" data-insert="5">5</button>
-          <button class="btn num" data-insert="6">6</button>
-          <button class="btn op" data-insert="−">−</button>
+        <button class="btn num" data-insert="1">1</button>
+        <button class="btn num" data-insert="2">2</button>
+        <button class="btn num" data-insert="3">3</button>
+        <button class="btn util" data-insert="+">+</button>
 
-          <button class="btn num" data-insert="1">1</button>
-          <button class="btn num" data-insert="2">2</button>
-          <button class="btn num" data-insert="3">3</button>
-          <button class="btn op" data-insert="+">+</button>
-
-          <button class="btn num" data-action="negate">±</button>
-          <button class="btn num" data-insert="0">0</button>
-          <button class="btn num" data-insert=".">.</button>
-          <button class="btn op equals" data-action="equals">=</button>
-        </div>
+        <button class="btn num" data-insert="0">0</button>
+        <button class="btn num" data-insert=".">.</button>
+        <button class="btn util" data-action="back" aria-label="Backspace">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 5H9l-7 7 7 7h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/>
+            <line x1="18" y1="9" x2="12" y2="15"/>
+            <line x1="12" y1="9" x2="18" y2="15"/>
+          </svg>
+        </button>
+        <button class="btn util filled equals" data-action="equals">=</button>
       </div>
     </main>
 
-    <!-- Converter view -->
     <main class="view converter-view" id="converterView">
       <div class="converter-header">
+        <button class="icon-btn ghost" id="convBackBtn" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+        </button>
         <h2>Converter</h2>
         <select id="conv-category" class="conv-select"></select>
       </div>
@@ -158,13 +139,12 @@
       </div>
     </main>
 
-    <!-- History panel -->
     <aside class="history-panel" id="historyPanel" aria-hidden="true">
       <div class="history-header">
         <h2>History</h2>
         <div class="history-actions">
           <button class="text-btn" id="clearHistoryBtn">Clear</button>
-          <button class="icon-btn" id="closeHistoryBtn" aria-label="Close history">
+          <button class="icon-btn ghost" id="closeHistoryBtn" aria-label="Close">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
               <line x1="6" y1="6" x2="18" y2="18"/>
@@ -177,16 +157,15 @@
       </div>
     </aside>
 
-    <!-- Settings panel -->
     <aside class="settings-panel" id="settingsPanel" aria-hidden="true">
       <div class="settings-header">
-        <h2>Settings</h2>
-        <button class="icon-btn" id="closeSettingsBtn" aria-label="Close settings">
+        <button class="icon-btn ghost" id="closeSettingsBtn" aria-label="Back">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
           </svg>
         </button>
+        <h2>Settings</h2>
       </div>
       <div class="settings-body">
         <section>
@@ -201,7 +180,6 @@
       </div>
     </aside>
 
-    <!-- Backdrop -->
     <div class="backdrop" id="backdrop"></div>
   </div>
 

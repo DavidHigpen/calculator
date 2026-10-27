@@ -261,7 +261,18 @@
   }
 
   // ============ Rendering ============
+  // Input handlers only update state and call render(); the actual redraw and
+  // preview calculation run once per frame, so rapid taps never wait on them.
+  let renderQueued = false;
   function render() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      if (renderQueued) renderNow();
+    });
+  }
+  function renderNow() {
+    renderQueued = false;
     const commas = commaPositions(state.tokens);
     exprEl.innerHTML = '';
     for (let i = 0; i < state.tokens.length; i++) {
@@ -344,6 +355,7 @@
     try {
       const r = evaluate(trimmed);
       if (r == null || !isFinite(r)) {
+        renderNow();
         previewEl.textContent = 'Error';
         return;
       }
@@ -351,14 +363,14 @@
       const resStr = formatResult(r);
       state.history.unshift({ expr: exprStr, result: resStr, raw: r });
       if (state.history.length > 200) state.history.pop();
-      saveHistory();
-      renderHistory();
+      saveHistory(); // the list itself is rebuilt when History is opened
       // Commas are display-only; keep them out of the input so math stays correct.
       state.tokens = resStr.replace(/,/g, '').split('');
       state.cursor = state.tokens.length;
       state.afterEquals = true;
       render();
     } catch (e) {
+      renderNow();
       previewEl.textContent = 'Error';
     }
   }
@@ -396,16 +408,25 @@
 
   // ============ Buttons ============
   function wireButtons() {
+    const press = (btn) => {
+      if (btn.classList.contains('inv-swap')) {
+        const spec = state.inv ? JSON.parse(btn.dataset.secondary) : JSON.parse(btn.dataset.primary);
+        insertTokens([spec.insert]);
+        return;
+      }
+      if (btn.dataset.action) { handleAction(btn.dataset.action); return; }
+      if (btn.dataset.insert) { insertTokens([btn.dataset.insert]); }
+    };
     document.querySelectorAll('.btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (btn.classList.contains('inv-swap')) {
-          const spec = state.inv ? JSON.parse(btn.dataset.secondary) : JSON.parse(btn.dataset.primary);
-          insertTokens([spec.insert]);
-          return;
-        }
-        if (btn.dataset.action) { handleAction(btn.dataset.action); return; }
-        if (btn.dataset.insert) { insertTokens([btn.dataset.insert]); }
+      // Act on touch-down rather than "click": phones drop clicks when taps
+      // overlap or come fast enough to look like a double-tap.
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault(); // no focus change / text selection; other touches unaffected
+        press(btn);
       });
+      // Keyboard activation (Tab + Space) still arrives as a click with detail 0.
+      btn.addEventListener('click', (e) => { if (e.detail === 0) press(btn); });
     });
     // Press-hold visual state for all pressable things
     document.querySelectorAll('.btn, .icon-btn, .text-btn, .chevron-btn, .conv-swap, .menu-item, .history-item').forEach(attachPressState);
@@ -649,7 +670,7 @@
   wireButtons();
   initChevron();
   updateInvSwaps();
-  render();
+  renderNow();
   renderHistory();
   if (window.Units) window.Units.init();
 })();

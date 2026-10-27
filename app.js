@@ -233,14 +233,44 @@
     } catch (e) { return ''; }
   }
 
+  // ============ Thousands separators (display only) ============
+  // Returns the token indexes that should show a comma after them.
+  // Only whole-number digits are grouped: not decimals, not exponents (1E1000).
+  function commaPositions(tokens) {
+    const out = new Set();
+    let i = 0;
+    while (i < tokens.length) {
+      if (!/^\d$/.test(tokens[i])) { i++; continue; }
+      let j = i;
+      while (j < tokens.length && /^\d$/.test(tokens[j])) j++;
+      const prev = tokens[i - 1];
+      const isWholePart = prev !== '.' && prev !== 'E' && !(prev === '−' && tokens[i - 2] === 'E');
+      const n = j - i;
+      if (isWholePart && n >= 4) {
+        for (let k = 0; k < n - 1; k++) {
+          if ((n - 1 - k) % 3 === 0) out.add(i + k);
+        }
+      }
+      i = j;
+    }
+    return out;
+  }
+  function groupedExpression(tokens) {
+    const commas = commaPositions(tokens);
+    return tokens.map((t, i) => (commas.has(i) ? t + ',' : t)).join('');
+  }
+
   // ============ Rendering ============
   function render() {
+    const commas = commaPositions(state.tokens);
     exprEl.innerHTML = '';
     for (let i = 0; i < state.tokens.length; i++) {
       const span = document.createElement('span');
       span.className = 'tok';
       span.dataset.idx = String(i);
-      span.textContent = state.tokens[i];
+      // The comma lives inside the digit's span, so the caret still lands
+      // between digits and backspace removes digits, never commas.
+      span.textContent = state.tokens[i] + (commas.has(i) ? ',' : '');
       exprEl.appendChild(span);
     }
     const caret = document.createElement('span');
@@ -317,13 +347,14 @@
         previewEl.textContent = 'Error';
         return;
       }
-      const exprStr = state.tokens.join('');
+      const exprStr = groupedExpression(state.tokens);
       const resStr = formatResult(r);
       state.history.unshift({ expr: exprStr, result: resStr, raw: r });
       if (state.history.length > 200) state.history.pop();
       saveHistory();
       renderHistory();
-      state.tokens = resStr.split('');
+      // Commas are display-only; keep them out of the input so math stays correct.
+      state.tokens = resStr.replace(/,/g, '').split('');
       state.cursor = state.tokens.length;
       state.afterEquals = true;
       render();
@@ -400,13 +431,17 @@
   // ============ Chevron scientific toggle ============
   function initChevron() {
     const expanded = localStorage.getItem(SCI_KEY) === '1';
-    if (expanded) {
-      sciGrid.classList.add('expanded');
-      chevronBtn.classList.add('expanded');
-    }
+    const calcView = $('calcView');
+    const setExpanded = (on) => {
+      sciGrid.classList.toggle('expanded', on);
+      chevronBtn.classList.toggle('expanded', on);
+      // Lets CSS compress the main keys while the sci rows are showing.
+      calcView.classList.toggle('sci-open', on);
+    };
+    setExpanded(expanded);
     chevronBtn.addEventListener('click', () => {
-      const now = sciGrid.classList.toggle('expanded');
-      chevronBtn.classList.toggle('expanded', now);
+      const now = !sciGrid.classList.contains('expanded');
+      setExpanded(now);
       localStorage.setItem(SCI_KEY, now ? '1' : '0');
     });
   }

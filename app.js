@@ -112,13 +112,37 @@
   }
 
   // ============ Evaluator ============
+  // Trig with exact answers where they should be exact. Floating-point π is
+  // slightly off, so cos(90°) would otherwise be 6.1e-17 instead of 0.
+  // Returns [sin, cos] of x in the current angle mode.
+  function sinCos(x) {
+    if (!isFinite(x)) return [NaN, NaN];
+    if (state.angleMode === 'deg') {
+      const d = ((x % 360) + 360) % 360;
+      if (d === 0) return [0, 1];
+      if (d === 90) return [1, 0];
+      if (d === 180) return [0, -1];
+      if (d === 270) return [-1, 0];
+      x = d * Math.PI / 180;
+    }
+    let s = Math.sin(x), c = Math.cos(x);
+    // Values this close to 0 from a non-tiny angle are rounding noise from π.
+    const noise = 1e-15 * Math.max(1, Math.abs(x));
+    if (Math.abs(x) > 1e-6) {
+      if (Math.abs(s) < noise) s = 0;
+      if (Math.abs(c) < noise) c = 0;
+    }
+    return [s, c];
+  }
+
   const funcs = {
     PI: Math.PI, E: Math.E,
     sqrt: Math.sqrt, cbrt: Math.cbrt,
     ln: Math.log, log: Math.log10,
-    sin: (x) => state.angleMode === 'deg' ? Math.sin(x * Math.PI / 180) : Math.sin(x),
-    cos: (x) => state.angleMode === 'deg' ? Math.cos(x * Math.PI / 180) : Math.cos(x),
-    tan: (x) => state.angleMode === 'deg' ? Math.tan(x * Math.PI / 180) : Math.tan(x),
+    sin: (x) => sinCos(x)[0],
+    cos: (x) => sinCos(x)[1],
+    // tan(90°) is undefined: dividing by an exact 0 gives Infinity → "Error".
+    tan: (x) => { const [s, c] = sinCos(x); return s / c; },
     asin: (x) => state.angleMode === 'deg' ? Math.asin(x) * 180 / Math.PI : Math.asin(x),
     acos: (x) => state.angleMode === 'deg' ? Math.acos(x) * 180 / Math.PI : Math.acos(x),
     atan: (x) => state.angleMode === 'deg' ? Math.atan(x) * 180 / Math.PI : Math.atan(x),
@@ -178,15 +202,89 @@
     return s;
   }
 
+  // Adding numbers that cancel out leaves floating-point noise
+  // (1 − 0.9 − 0.1 = −2.8e-17). Treat results that small, relative to the
+  // numbers being added, as exactly 0.
+  function cleanSum(r, a, b) {
+    const m = Math.max(Math.abs(a), Math.abs(b));
+    return Math.abs(r) <= m * 1e-14 ? 0 : r;
+  }
+
+  // Small recursive-descent evaluator for the string tokensToJs produces.
+  // Evaluating step by step (instead of handing it all to JS) lets each
+  // addition be cleaned up, and makes −2^2 = −4 like on paper.
+  //   expr  := term (('+' | '-') term)*
+  //   term  := unary (('*' | '/') unary)*
+  //   unary := ('-' | '+') unary | power
+  //   power := primary ('**' unary)?
+  //   primary := number | name | name '(' expr ')' | '(' expr ')'
+  function evalExpression(src) {
+    let i = 0;
+    const peek = (t) => src.startsWith(t, i);
+    const fail = () => { throw new Error('syntax'); };
+
+    function expr() {
+      let v = term();
+      while (i < src.length) {
+        if (peek('+')) { i++; const b = term(); v = cleanSum(v + b, v, b); }
+        else if (peek('-')) { i++; const b = term(); v = cleanSum(v - b, v, b); }
+        else break;
+      }
+      return v;
+    }
+    function term() {
+      let v = unary();
+      while (i < src.length) {
+        if (peek('**')) break;
+        if (peek('*')) { i++; v *= unary(); }
+        else if (peek('/')) { i++; v /= unary(); }
+        else break;
+      }
+      return v;
+    }
+    function unary() {
+      if (peek('-')) { i++; return -unary(); }
+      if (peek('+')) { i++; return unary(); }
+      return power();
+    }
+    function power() {
+      const base = primary();
+      if (peek('**')) { i += 2; return Math.pow(base, unary()); }
+      return base;
+    }
+    function primary() {
+      if (peek('(')) {
+        i++;
+        const v = expr();
+        if (!peek(')')) fail();
+        i++;
+        return v;
+      }
+      const num = /^(?:\d+\.?\d*|\.\d+)(?:E[+-]?\d+)?/.exec(src.slice(i));
+      if (num) { i += num[0].length; return parseFloat(num[0].replace('E', 'e')); }
+      const name = /^[A-Za-z_]+/.exec(src.slice(i));
+      if (name && Object.prototype.hasOwnProperty.call(funcs, name[0])) {
+        i += name[0].length;
+        const f = funcs[name[0]];
+        if (typeof f === 'number') return f;
+        if (!peek('(')) fail();
+        i++;
+        const arg = expr();
+        if (!peek(')')) fail();
+        i++;
+        return f(arg);
+      }
+      return fail();
+    }
+
+    const v = expr();
+    if (i !== src.length) fail();
+    return v;
+  }
+
   function evaluate(tokens) {
     if (!tokens.length) return null;
-    const expr = tokensToJs(tokens);
-    const names = Object.keys(funcs);
-    const vals = names.map((k) => funcs[k]);
-    const fn = new Function(...names, 'return (' + expr + ');');
-    const r = fn(...vals);
-    if (typeof r !== 'number') throw new Error('non-numeric');
-    return r;
+    return evalExpression(tokensToJs(tokens));
   }
 
   function addThousands(s) {
@@ -288,10 +386,28 @@
     caret.className = 'caret';
     exprEl.appendChild(caret);
 
+    fitExpression();
     positionCaret();
 
     previewEl.textContent = tryPreview();
     if (angleBtn) angleBtn.textContent = state.angleMode === 'deg' ? 'Rad' : 'Deg';
+  }
+
+  // Shrink the equation text to fit the row, but only down to 70% of full
+  // size; anything longer stays at 70% and scrolls sideways instead.
+  const MIN_EXPR_SCALE = 0.7;
+  function fitExpression() {
+    exprEl.style.setProperty('--expr-scale', '1');
+    const row = exprEl.parentElement;
+    // Padding doesn't shrink with the font, so leave it out of the ratio.
+    const cs = getComputedStyle(exprEl);
+    const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const available = row.clientWidth - pad;
+    const needed = exprEl.offsetWidth - pad; // text width at full size
+    const scale = needed > available
+      ? Math.max(MIN_EXPR_SCALE, Math.floor((available / needed) * 1000) / 1000)
+      : 1;
+    exprEl.style.setProperty('--expr-scale', String(scale));
   }
 
   function positionCaret() {
@@ -665,6 +781,8 @@
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('gesturechange', (e) => e.preventDefault());
   document.addEventListener('gestureend', (e) => e.preventDefault());
+
+  window.addEventListener('resize', () => { fitExpression(); positionCaret(); });
 
   // ============ Boot ============
   wireButtons();

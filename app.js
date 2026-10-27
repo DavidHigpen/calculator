@@ -427,6 +427,12 @@
     }
     caret.style.left = left + 'px';
 
+    // Typing at the end (the usual case): keep the end in view right away,
+    // e.g. after rotating the phone changes the text size.
+    if (state.cursor >= state.tokens.length && exprEl.parentElement) {
+      exprEl.parentElement.scrollLeft = exprEl.parentElement.scrollWidth;
+    }
+
     // Scroll into view
     requestAnimationFrame(() => {
       const row = exprEl.parentElement;
@@ -576,8 +582,12 @@
       calcView.classList.toggle('sci-open', on);
     };
     setExpanded(expanded);
+    let animTimer = 0;
     chevronBtn.addEventListener('click', () => {
       const now = !sciGrid.classList.contains('expanded');
+      calcView.classList.add('keys-anim');
+      clearTimeout(animTimer);
+      animTimer = setTimeout(() => calcView.classList.remove('keys-anim'), 400);
       setExpanded(now);
       localStorage.setItem(SCI_KEY, now ? '1' : '0');
     });
